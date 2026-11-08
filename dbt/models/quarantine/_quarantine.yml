@@ -1,0 +1,25 @@
+version: 2
+
+models:
+  - name: rejected_sales
+    description: Sales lines isolated by a quality rule, with the reason.
+    columns:
+      - name: rejection_reason
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: [missing_sale_line_id, missing_store_id, missing_product_id, invalid_timestamp,
+                       future_timestamp, invalid_quantity, invalid_price, unknown_store,
+                       unknown_currency, duplicate_sale_line_id]
+  - name: rejected_inventory
+    columns:
+      - name: rejection_reason
+        data_tests: [not_null]
+  - name: rejected_purchase_orders
+    columns:
+      - name: rejection_reason
+        data_tests: [not_null]
+  - name: rejected_deliveries
+    columns:
+      - name: rejection_reason
+        data_tests: [not_null]

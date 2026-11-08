@@ -1,0 +1,47 @@
+# dbt project: transforms the raw tables into a star-schema warehouse.
+# Layers: staging (typed + checked) -> intermediate -> marts (dimensions, facts, analytics).
+name: retail_dw
+version: "1.0.0"
+config-version: 2
+profile: retail_dw
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages", "logs"]
+
+vars:
+  # Lookback window for late-arriving records: every incremental run re-processes
+  # the last N days of facts, so a late catalog update or a late sale is applied.
+  lookback_days: 3
+  # Range of the date dimension
+  date_spine_start: "2025-01-01"
+  date_spine_end: "2027-12-31"
+  # A rule-based indicator fires when the stock drops by more than this
+  # many units without a sale to explain it
+  shrinkage_threshold_units: 2
+  # A sale price this far from the catalog price (40%) is flagged
+  price_deviation_threshold: 0.40
+
+models:
+  retail_dw:
+    staging:
+      +schema: staging
+      +materialized: view
+    intermediate:
+      +schema: staging
+      +materialized: table
+    quarantine:
+      +schema: quarantine
+      +materialized: table
+    marts:
+      +schema: marts
+      core:
+        +materialized: table
+      analytics:
+        +materialized: table
+
+tests:
+  retail_dw:
+    +severity: error

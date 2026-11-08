@@ -1,0 +1,16 @@
+# Render "Blueprint" for the online demo (free plan, static site).
+# The dashboard is published as plain HTML/CSS/JS: it reads
+# dashboard/static/data/snapshot.json, a copy of a real pipeline run.
+# A static site on Render's free plan does not go to sleep: the page opens at once.
+# See docs/DEPLOIEMENT.md.
+services:
+  - type: web
+    name: retail-warehouse-dashboard
+    runtime: static
+    buildCommand: echo "static site, nothing to build"
+    staticPublishPath: ./dashboard/static
+    pullRequestPreviewsEnabled: false
+    headers:
+      - path: /data/*
+        name: Cache-Control
+        value: no-cache

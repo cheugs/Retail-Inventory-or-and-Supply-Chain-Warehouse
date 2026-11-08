@@ -1,0 +1,27 @@
+# Connection profiles. Values come from environment variables (see .env.example):
+# no password is written in this file.
+retail_dw:
+  target: "{{ env_var('DBT_TARGET', 'postgres') }}"
+  outputs:
+    postgres:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST', 'localhost') }}"
+      port: "{{ env_var('POSTGRES_PORT', '5433') | int }}"
+      dbname: "{{ env_var('POSTGRES_DB', 'retail_dw') }}"
+      user: "{{ env_var('POSTGRES_USER', 'retail') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD', 'retail') }}"
+      schema: marts
+      threads: 4
+    # Optional cloud target. The models only use cross-database macros
+    # (see macros/cross_db.sql), so the same project can run on Snowflake.
+    # Needs: pip install dbt-snowflake, and the raw tables loaded in Snowflake.
+    snowflake:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT', 'not_set') }}"
+      user: "{{ env_var('SNOWFLAKE_USER', 'not_set') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD', 'not_set') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'TRANSFORMER') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'COMPUTE_WH') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'RETAIL_DW') }}"
+      schema: marts
+      threads: 4

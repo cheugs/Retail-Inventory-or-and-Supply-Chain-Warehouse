@@ -1,0 +1,120 @@
+# Full local stack:
+#   postgres   the warehouse (raw, staging, marts, quarantine, audit schemas) + Airflow metadata
+#   generator  one-shot job that writes the simulated source files to data/landing
+#   airflow    scheduler + web UI (http://localhost:8080), runs the daily DAG (ingest -> dbt -> reconcile)
+#   dashboard  web dashboard reading the marts (http://localhost:8000)
+#
+# Start everything:   docker compose up -d --build
+# Passwords come from .env (copy .env.example to .env first).
+
+x-pipeline-env: &pipeline-env
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: ${POSTGRES_DB:-retail_dw}
+  POSTGRES_USER: ${POSTGRES_USER:-retail}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-retail}
+  LANDING_DIR: /opt/project/data/landing
+  SIM_START_DATE: ${SIM_START_DATE:-2026-01-01}
+  SIM_DAYS: ${SIM_DAYS:-90}
+  SIM_STORES: ${SIM_STORES:-6}
+  SIM_PRODUCTS: ${SIM_PRODUCTS:-150}
+  SIM_SUPPLIERS: ${SIM_SUPPLIERS:-12}
+  SIM_SEED: ${SIM_SEED:-42}
+  DBT_BIN: /opt/dbt_venv/bin/dbt
+  DBT_PROJECT_DIR: /opt/project/dbt
+  PYTHONPATH: /opt/project
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: retail_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-retail_dw}
+      POSTGRES_USER: ${POSTGRES_USER:-retail}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-retail}
+    # Single-node warehouse without replica: with wal_level=minimal, the tables that dbt
+    # creates inside a transaction (CREATE TABLE AS) are not written to the WAL, which was
+    # the main bottleneck of the benchmark (see README section 9).
+    command: ["postgres", "-c", "wal_level=minimal", "-c", "max_wal_senders=0", "-c", "shared_buffers=256MB"]
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # executed once, when the volume is empty
+      - ./sql/00_airflow_database.sql:/docker-entrypoint-initdb.d/00_airflow_database.sql:ro
+      - ./sql/01_raw_and_audit.sql:/docker-entrypoint-initdb.d/01_raw_and_audit.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-retail} -d ${POSTGRES_DB:-retail_dw}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  generator:
+    build:
+      context: .
+      dockerfile: airflow/Dockerfile
+    container_name: retail_generator
+    environment: *pipeline-env
+    volumes:
+      - ./:/opt/project
+    working_dir: /opt/project
+    # only generates the files if they do not exist yet
+    entrypoint: ["bash", "-c", "if [ -z \"$$(ls -A data/landing 2>/dev/null)\" ]; then python -m retail_pipeline.run generate; else echo 'Source files already present'; fi"]
+    restart: "no"
+
+  airflow:
+    build:
+      context: .
+      dockerfile: airflow/Dockerfile
+    container_name: retail_airflow
+    depends_on:
+      postgres:
+        condition: service_healthy
+      generator:
+        condition: service_completed_successfully
+    environment:
+      <<: *pipeline-env
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-retail}:${POSTGRES_PASSWORD:-retail}@postgres:5432/airflow
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/project/airflow/dags
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "false"
+      AIRFLOW_ADMIN_USER: ${AIRFLOW_ADMIN_USER:-admin}
+      AIRFLOW_ADMIN_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./:/opt/project
+    ports:
+      - "8080:8080"
+    # 1. create/upgrade Airflow's metadata tables, 2. create the admin login (from .env),
+    # 3. start the scheduler in the background and the web interface
+    command:
+      - bash
+      - -c
+      - >-
+        airflow db migrate &&
+        (airflow users create --role Admin --username "$${AIRFLOW_ADMIN_USER}" --password "$${AIRFLOW_ADMIN_PASSWORD}" --firstname Admin --lastname User --email admin@example.com || true) &&
+        (airflow scheduler &) && exec airflow webserver --port 8080
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    container_name: retail_dashboard
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-retail_dw}
+      POSTGRES_USER: ${POSTGRES_USER:-retail}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-retail}
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+volumes:
+  pgdata:

@@ -1,0 +1,121 @@
+version: 2
+
+# Documentation and automatic tests of the star schema.
+# `dbt build` runs these tests right after building each model.
+
+models:
+  - name: dim_product
+    description: Product dimension, SCD type 2 (one row per version of a product).
+    columns:
+      - name: product_key
+        description: Surrogate key of one product version.
+        data_tests: [unique, not_null]
+      - name: product_id
+        description: Business key of the product.
+        data_tests: [not_null]
+      - name: valid_from
+        data_tests: [not_null]
+      - name: valid_to
+        data_tests: [not_null]
+
+  - name: dim_store
+    description: Store dimension, SCD type 1.
+    columns:
+      - name: store_key
+        data_tests: [unique, not_null]
+      - name: store_id
+        data_tests: [unique, not_null]
+      - name: currency
+        data_tests:
+          - accepted_values:
+              values: ["EUR", "CHF"]
+
+  - name: dim_supplier
+    description: Supplier dimension, SCD type 1.
+    columns:
+      - name: supplier_key
+        data_tests: [unique, not_null]
+      - name: supplier_id
+        data_tests: [unique, not_null]
+
+  - name: dim_date
+    description: Calendar dimension.
+    columns:
+      - name: date_key
+        data_tests: [unique, not_null]
+
+  - name: fct_sales
+    description: Sales fact, one row per receipt line. Incremental.
+    columns:
+      - name: sale_line_id
+        description: Business id of the receipt line. Must be unique (no double counting).
+        data_tests: [unique, not_null]
+      - name: date_key
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_date')
+              field: date_key
+      - name: store_key
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_store')
+              field: store_key
+      - name: product_key
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_product')
+              field: product_key
+      - name: quantity
+        data_tests: [not_null]
+      - name: net_amount_eur
+        description: Net amount converted to EUR with the rate of the sale day.
+        data_tests: [not_null]
+
+  - name: fct_inventory_daily
+    description: Inventory periodic snapshot, one row per store, product and day. Incremental.
+    columns:
+      - name: inventory_key
+        data_tests: [unique, not_null]
+      - name: on_hand_qty
+        data_tests: [not_null]
+      - name: product_key
+        data_tests:
+          - relationships:
+              to: ref('dim_product')
+              field: product_key
+
+  - name: fct_purchase_order_lines
+    description: Purchase order accumulating snapshot, one row per order line.
+    columns:
+      - name: po_line_id
+        data_tests: [unique, not_null]
+      - name: supplier_key
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_supplier')
+              field: supplier_key
+      - name: status
+        data_tests:
+          - accepted_values:
+              values: ["complete", "partial", "overdue", "open"]
+
+  - name: mart_stockouts_daily
+    columns:
+      - name: stockout_rate
+        data_tests: [not_null]
+
+  - name: mart_supplier_performance_monthly
+    columns:
+      - name: supplier_id
+        data_tests: [not_null]
+
+  - name: mart_anomaly_indicators
+    columns:
+      - name: indicator
+        data_tests:
+          - accepted_values:
+              values: ["unexplained_stock_drop", "price_deviation"]

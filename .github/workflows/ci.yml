@@ -1,0 +1,50 @@
+# Continuous integration: at every push and pull request, GitHub starts a
+# PostgreSQL 16 service and runs the unit tests, the dbt build on a small
+# simulated dataset, and the integration / end-to-end tests.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: retail_dw
+          POSTGRES_USER: retail
+          POSTGRES_PASSWORD: ci_only_password
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U retail"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5433"
+      POSTGRES_USER: retail
+      POSTGRES_PASSWORD: ci_only_password
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Unit tests
+        run: pytest tests/unit -v
+      - name: Parse the dbt project
+        run: dbt parse --project-dir dbt --profiles-dir dbt
+      - name: Integration and end-to-end tests (PostgreSQL + dbt)
+        run: pytest tests/integration -v
+      - name: Small end-to-end run of the pipeline
+        env:
+          POSTGRES_DB: retail_dw
+          SIM_DAYS: "20"
+          SIM_STORES: "2"
+          SIM_PRODUCTS: "20"
+        run: python -m retail_pipeline.run all

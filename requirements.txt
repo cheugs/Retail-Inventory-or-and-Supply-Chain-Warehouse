@@ -1,0 +1,6 @@
+# Pipeline (generator, ingestion, reconciliation, dashboard export)
+numpy>=1.26,<3
+pandas>=2.2,<4
+psycopg[binary]==3.2.3
+fastapi==0.115.6
+uvicorn==0.34.0

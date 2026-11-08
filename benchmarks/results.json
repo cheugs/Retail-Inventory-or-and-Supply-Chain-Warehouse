@@ -1,0 +1,96 @@
+{
+  "date": "2026-11-08T18:53",
+  "machine": "Windows 11, 12 CPU threads, PostgreSQL 16 in Docker",
+  "runs": [
+    {
+      "size": "10k",
+      "sales_rows": 12483,
+      "all_source_rows": 21294,
+      "fact_sales_rows": 12374,
+      "generate_s": 2.7,
+      "ingest_s": 27.7,
+      "dbt_build_s": 18.1,
+      "reconcile_s": 0.2,
+      "total_s": 46.0,
+      "rows_per_s": 463,
+      "ingest_rows_per_s": 769,
+      "reconciliation": "pass",
+      "database_size": "19 MB",
+      "postgres_memory": "285.3MiB",
+      "slowest_models": [
+        {
+          "model": "rejected_purchase_orders",
+          "seconds": 2.0
+        },
+        {
+          "model": "dim_product",
+          "seconds": 2.0
+        },
+        {
+          "model": "rejected_sales",
+          "seconds": 1.8
+        }
+      ]
+    },
+    {
+      "size": "100k",
+      "sales_rows": 101833,
+      "all_source_rows": 160497,
+      "fact_sales_rows": 101043,
+      "generate_s": 52.9,
+      "ingest_s": 39.1,
+      "dbt_build_s": 47.5,
+      "reconcile_s": 2.5,
+      "total_s": 89.1,
+      "rows_per_s": 1800,
+      "ingest_rows_per_s": 4101,
+      "reconciliation": "pass",
+      "database_size": "77 MB",
+      "postgres_memory": "286.8MiB",
+      "slowest_models": [
+        {
+          "model": "fct_sales",
+          "seconds": 29.8
+        },
+        {
+          "model": "int_store_product_daily",
+          "seconds": 2.9
+        },
+        {
+          "model": "rejected_sales",
+          "seconds": 2.2
+        }
+      ]
+    },
+    {
+      "size": "1m",
+      "sales_rows": 1026066,
+      "all_source_rows": 1629463,
+      "fact_sales_rows": 1017990,
+      "generate_s": 127.9,
+      "ingest_s": 125.2,
+      "dbt_build_s": 383.4,
+      "reconcile_s": 4.3,
+      "total_s": 512.9,
+      "rows_per_s": 3177,
+      "ingest_rows_per_s": 13011,
+      "reconciliation": "pass",
+      "database_size": "896 MB",
+      "postgres_memory": "837.5MiB",
+      "slowest_models": [
+        {
+          "model": "int_store_product_daily",
+          "seconds": 166.4
+        },
+        {
+          "model": "mart_daily_sales",
+          "seconds": 103.8
+        },
+        {
+          "model": "fct_sales",
+          "seconds": 85.8
+        }
+      ]
+    }
+  ]
+}

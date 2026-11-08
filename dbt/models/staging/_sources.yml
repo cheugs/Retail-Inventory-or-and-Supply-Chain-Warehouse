@@ -1,0 +1,24 @@
+version: 2
+
+# Raw tables filled by retail_pipeline/ingest.py (all columns are text).
+sources:
+  - name: raw
+    schema: raw
+    loaded_at_field: _loaded_at
+    tables:
+      - name: products
+        description: Catalog changes exported every day (new products, price or supplier changes).
+      - name: suppliers
+        description: Supplier master data (full export on day one, then changes).
+      - name: stores
+        description: Store master data (full export on day one, then changes).
+      - name: sales
+        description: Till receipt lines. Can contain late, duplicated or invalid lines.
+      - name: inventory
+        description: End-of-day stock count per store and product.
+      - name: purchase_orders
+        description: Order lines sent to suppliers.
+      - name: deliveries
+        description: Goods received from suppliers (one order line can be delivered in several parts).
+      - name: fx_rates
+        description: Daily exchange rates to EUR.

@@ -1,0 +1,28 @@
+# Secrets: never commit the real .env (only .env.example)
+.env
+
+# Generated source files (re-created by the generator)
+data/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# dbt
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+logs/
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local editor / assistant settings
+.claude/
+dbt/.user.yml

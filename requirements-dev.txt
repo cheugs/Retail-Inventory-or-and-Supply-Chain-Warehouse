@@ -1,0 +1,6 @@
+# Everything needed to run the pipeline and the tests on your machine
+-r requirements.txt
+dbt-core==1.9.4
+dbt-postgres==1.9.0
+pytest==8.3.4
+httpx==0.28.1
