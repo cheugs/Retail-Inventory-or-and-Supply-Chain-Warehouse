@@ -4,7 +4,7 @@
 # for the online version (same code: python -m retail_pipeline.run live-update).
 #
 # Needs one repository secret: NEON_DATABASE_URL (Settings > Secrets and
-# variables > Actions). Without it the job stops at the first step and does nothing.
+# variables > Actions). Without it the job only prints a notice and does nothing.
 name: Daily load (live demo)
 
 on:
@@ -35,19 +35,27 @@ jobs:
       SIM_SEED: "42"
     steps:
       - name: Check that the database secret exists
+        id: check
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "::error::Secret NEON_DATABASE_URL is missing (see docs/DEPLOIEMENT.md)"
-            exit 1
+            echo "::notice::Secret NEON_DATABASE_URL is not set yet: nothing to do (see docs/DEPLOIEMENT.md)"
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
       - uses: actions/checkout@v4
+        if: steps.check.outputs.configured == 'true'
       - uses: actions/setup-python@v5
+        if: steps.check.outputs.configured == 'true'
         with:
           python-version: "3.12"
           cache: pip
       - name: Install dependencies
+        if: steps.check.outputs.configured == 'true'
         run: pip install -r requirements-dev.txt
       - name: Simulate and load the new day(s), dbt build, reconcile, export
+        if: steps.check.outputs.configured == 'true'
         run: python -m retail_pipeline.run live-update
       - name: Publish the fresh dashboard data
+        if: steps.check.outputs.configured == 'true'
         run: bash scripts/publish_pages.sh --fresh
