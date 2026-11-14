@@ -1,0 +1,28 @@
+# Publishes the dashboard (dashboard/static, with its JSON snapshot) to the
+# gh-pages branch at every push on main. GitHub Pages serves that branch at
+# https://cheugs.github.io/Retail-Inventory-or-and-Supply-Chain-Warehouse/
+name: Publish dashboard
+
+on:
+  push:
+    branches: [main]
+    paths: ["dashboard/static/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Push dashboard/static to the gh-pages branch
+        run: |
+          test -f dashboard/static/data/snapshot.json
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git subtree split --prefix dashboard/static -b gh-pages-build
+          git push --force origin gh-pages-build:gh-pages

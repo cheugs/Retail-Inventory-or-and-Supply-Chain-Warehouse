@@ -12,8 +12,9 @@ to answer three questions: **where is stock missing**, **which suppliers keep th
 > All data is **synthetic**: the company, stores, products and suppliers are invented. The project
 > shows a data engineering approach; it does not claim to describe a real company.
 
-**Online demo:** the dashboard is published for free as a static site (see
-[docs/en/DEPLOYMENT.md](docs/en/DEPLOYMENT.md)). The full chain runs locally with Docker (section 13).
+**Online demo:** https://cheugs.github.io/Retail-Inventory-or-and-Supply-Chain-Warehouse/  
+*A copy of a real pipeline run, published on GitHub Pages (see [docs/en/DEPLOYMENT.md](docs/en/DEPLOYMENT.md)).
+The full chain runs locally with Docker (section 13).*
 
 **Author:** Chengho Fongang Marie Louise
 

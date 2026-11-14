@@ -13,8 +13,9 @@ d'une chaîne de magasins simulée, pour répondre à trois questions : **où ma
 > fournisseurs sont inventés. Le projet montre une démarche d'ingénierie des données ; il ne
 > prétend pas décrire une entreprise réelle.
 
-**Démo en ligne :** le tableau de bord se publie gratuitement comme site statique (voir
-[docs/DEPLOIEMENT.md](docs/DEPLOIEMENT.md)). La chaîne complète tourne en local avec Docker (section 13).
+**Démo en ligne :** https://cheugs.github.io/Retail-Inventory-or-and-Supply-Chain-Warehouse/  
+*Copie d'une vraie exécution du pipeline, publiée sur GitHub Pages (voir [docs/DEPLOIEMENT.md](docs/DEPLOIEMENT.md)).
+La chaîne complète tourne en local avec Docker (section 13).*
 
 **Auteure :** Chengho Fongang Marie Louise
 

@@ -11,7 +11,16 @@ It needs no database and no Python server. As a result:
 - figures come from the last export, not live data. The full chain (PostgreSQL, Airflow, dbt)
   runs locally with Docker.
 
-## Option 1: Render (recommended)
+## Option 1: GitHub Pages (used for the demo)
+
+Address: https://cheugs.github.io/Retail-Inventory-or-and-Supply-Chain-Warehouse/
+
+Nothing to set up: the `.github/workflows/pages.yml` workflow copies `dashboard/static` to the
+`gh-pages` branch at every push that changes the dashboard, and GitHub Pages serves that branch.
+If the site does not show up: **Settings** > **Pages** > *Source*: **Deploy from a branch**,
+branch `gh-pages`, folder `/ (root)`.
+
+## Option 2: Render
 
 The `render.yaml` file at the root already describes the site.
 
@@ -26,12 +35,8 @@ Every `git push` to `main` redeploys the site automatically.
 Without the Blueprint: **New** > **Static Site**, repository, empty *Build Command* (or `echo ok`),
 *Publish Directory* `dashboard/static`.
 
-## Option 2: GitHub Pages
-
-1. On GitHub: **Settings** > **Pages**.
-2. *Source*: **GitHub Actions**, pick the **Static HTML** template and set the published folder
-   to `dashboard/static` (the `path:` line of the proposed workflow).
-3. Address: `https://cheugs.github.io/Retail-Inventory-or-and-Supply-Chain-Warehouse/`.
+Careful: choose **Static Site**, not *Web Service*. A *Web Service* tries to start a Python
+application and fails (there is no server to start for the demo).
 
 ## Option 3: Netlify or Vercel
 

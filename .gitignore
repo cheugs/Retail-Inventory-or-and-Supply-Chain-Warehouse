@@ -2,7 +2,7 @@
 .env
 
 # Generated source files (re-created by the generator)
-data/
+/data/
 
 # Python
 __pycache__/

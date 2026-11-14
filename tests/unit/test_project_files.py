@@ -33,3 +33,11 @@ def test_every_dbt_model_has_a_comment_header():
     for sql in (ROOT / "dbt" / "models").rglob("*.sql"):
         first = sql.read_text(encoding="utf-8").lstrip()
         assert first.startswith("--") or first.startswith("{{"), sql.name
+
+
+def test_online_demo_data_is_in_the_repository():
+    # the static online dashboard reads this file: without it the demo shows no data
+    snapshot = ROOT / "dashboard" / "static" / "data" / "snapshot.json"
+    assert snapshot.exists(), "run: python -m dashboard.export_snapshot, then commit the file"
+    gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
+    assert "data/" not in gitignore, "'data/' would also ignore dashboard/static/data (use '/data/')"
