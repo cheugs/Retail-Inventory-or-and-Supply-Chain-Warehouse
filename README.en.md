@@ -13,6 +13,8 @@ to answer three questions: **where is stock missing**, **which suppliers keep th
 > shows a data engineering approach; it does not claim to describe a real company.
 
 **Online demo:** https://cheugs.github.io/Retail-Inventory-or-and-Supply-Chain-Warehouse/  
+**Live version (reads the Neon database):** https://retail-warehouse-live-8lnt.onrender.com  
+*Free hosting on Render: if it is asleep, the first load takes about a minute.*  
 *Updated every morning: GitHub Actions simulates yesterday, loads it into the warehouse hosted on Neon
 (free PostgreSQL) with dbt and the reconciliation, then publishes the figures on GitHub Pages
 (see [docs/en/DEPLOYMENT.md](docs/en/DEPLOYMENT.md)). The full chain, with Airflow, runs locally with Docker (section 13).*

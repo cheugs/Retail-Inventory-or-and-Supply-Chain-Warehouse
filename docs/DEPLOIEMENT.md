@@ -50,8 +50,7 @@ Ne collez cette chaîne ni dans le code ni dans un fichier suivi par Git : elle 
 2. **New** > **Blueprint**, choisir le dépôt. Render lit `render.yaml` (service `retail-warehouse-live`,
    construit avec le `Dockerfile` à la racine).
 3. Render demande la valeur de `DATABASE_URL` : coller la même chaîne Neon. Valider.
-4. Après quelques minutes, le site est disponible à une adresse du type
-   `https://retail-warehouse-live.onrender.com`. La barre latérale affiche "base en direct".
+4. Après quelques minutes, le site est disponible. Adresse de ce projet : https://retail-warehouse-live-8lnt.onrender.com La barre latérale affiche "base en direct".
 
 Si la base ne répond pas, le serveur affiche le dernier snapshot enregistré au lieu d'une erreur.
 

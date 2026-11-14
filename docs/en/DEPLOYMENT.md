@@ -50,7 +50,7 @@ Never paste this string in the code or in a file tracked by Git: it contains the
 2. **New** > **Blueprint**, pick the repository. Render reads `render.yaml` (service
    `retail-warehouse-live`, built from the root `Dockerfile`).
 3. Render asks for the `DATABASE_URL` value: paste the same Neon string. Confirm.
-4. After a few minutes the site is live at an address like `https://retail-warehouse-live.onrender.com`.
+4. After a few minutes the site is live. This project's address: https://retail-warehouse-live-8lnt.onrender.com
    The sidebar shows "live database".
 
 If the database does not answer, the server shows the last saved snapshot instead of an error.

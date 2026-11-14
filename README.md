@@ -14,6 +14,8 @@ d'une chaîne de magasins simulée, pour répondre à trois questions : **où ma
 > prétend pas décrire une entreprise réelle.
 
 **Démo en ligne :** https://cheugs.github.io/Retail-Inventory-or-and-Supply-Chain-Warehouse/  
+**Version en direct (lit la base Neon) :** https://retail-warehouse-live-8lnt.onrender.com  
+*Hébergée gratuitement sur Render : si elle dort, le premier chargement prend environ une minute.*  
 *Mise à jour chaque matin : GitHub Actions simule la journée d'hier, la charge dans l'entrepôt hébergé
 sur Neon (PostgreSQL gratuit) avec dbt et le rapprochement, puis publie les chiffres sur GitHub Pages
 (voir [docs/DEPLOIEMENT.md](docs/DEPLOIEMENT.md)). La chaîne complète, avec Airflow, tourne en local avec Docker (section 13).*
