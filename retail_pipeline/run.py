@@ -8,6 +8,7 @@
     python -m retail_pipeline.run reconcile
     python -m retail_pipeline.run export       # write the dashboard snapshot (JSON)
     python -m retail_pipeline.run replay       # rebuild the whole warehouse from the raw layer
+    python -m retail_pipeline.run live-update  # live mode: add the days up to yesterday (daily job)
 
 Airflow calls the same functions (see airflow/dags/retail_warehouse_daily.py).
 """
@@ -22,7 +23,7 @@ import sys
 from datetime import date
 
 from retail_pipeline.config import settings
-from retail_pipeline.db import init_database, new_run_id, track_step
+from retail_pipeline.db import connect, init_database, new_run_id, track_step
 
 log = logging.getLogger("run")
 
@@ -43,7 +44,7 @@ def run_dbt(run_id: str, command: str = "build", full_refresh: bool = False, ext
     args += extra or []
     env = {**os.environ, "POSTGRES_HOST": settings.pg_host, "POSTGRES_PORT": str(settings.pg_port),
            "POSTGRES_DB": settings.pg_db, "POSTGRES_USER": settings.pg_user,
-           "POSTGRES_PASSWORD": settings.pg_password}
+           "POSTGRES_PASSWORD": settings.pg_password, "POSTGRES_SSLMODE": settings.pg_sslmode}
     with track_step(run_id, f"dbt_{command}") as step:
         log.info("Running: %s", " ".join(args[-8:]))
         result = subprocess.run(args, env=env, capture_output=True, text=True)
@@ -56,9 +57,42 @@ def run_dbt(run_id: str, command: str = "build", full_refresh: bool = False, ext
             raise RuntimeError(f"dbt {command} failed (exit code {result.returncode}):\n{tail}")
 
 
+def days_to_simulate(start: date, today: date) -> int:
+    """Live mode: number of days from the start date up to yesterday (today is not over)."""
+    return max(1, (today - start).days)
+
+
+def loaded_batches() -> set[date]:
+    """Days already loaded with success (read from the audit table)."""
+    with connect() as conn:
+        rows = conn.execute("select distinct batch_date from audit.load_log where status = 'success'").fetchall()
+    return {r[0] for r in rows}
+
+
+def live_update(run_id: str) -> int:
+    """Daily job of the live demo.
+
+    The simulation always restarts from SIM_START_DATE with the same seed and the
+    same planning horizon, so the days already loaded are generated identically.
+    Only the days that are not in the warehouse yet are loaded (normally one:
+    yesterday). The first run loads the whole history.
+    """
+    from retail_pipeline import generate, ingest
+
+    days = days_to_simulate(settings.start_date, date.today())
+    generate.generate(settings.landing_dir, settings.start_date, days, settings.n_stores,
+                      settings.n_products, settings.n_suppliers, settings.seed, plan_days=settings.plan_days)
+    done = loaded_batches()
+    new_days = [d for d in ingest.available_batches() if d not in done]
+    log.info("Live update: %s day(s) simulated, %s new day(s) to load", days, len(new_days))
+    for d in new_days:
+        ingest.ingest_batch(d, run_id)
+    return len(new_days)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Retail warehouse pipeline")
-    parser.add_argument("step", choices=["all", "init-db", "generate", "ingest", "dbt", "reconcile", "export", "replay"])
+    parser.add_argument("step", choices=["all", "init-db", "generate", "ingest", "dbt", "reconcile", "export", "replay", "live-update"])
     parser.add_argument("--date", help="only this batch date (ingest)")
     parser.add_argument("--full-refresh", action="store_true", help="rebuild incremental models from scratch")
     parser.add_argument("--skip-generate", action="store_true", help="'all' without re-generating source files")
@@ -76,6 +110,9 @@ def main() -> None:
     log.info("Run id: %s", run_id)
     init_database()
 
+    if args.step == "live-update" and live_update(run_id) == 0:
+        log.info("Nothing new to load: the warehouse is already up to date")
+
     if args.step in ("all",) and not args.skip_generate:
         generate.main_from_settings()
 
@@ -84,13 +121,13 @@ def main() -> None:
         for d in days:
             ingest.ingest_batch(d, run_id)
 
-    if args.step in ("all", "dbt", "replay"):
+    if args.step in ("all", "dbt", "replay", "live-update"):
         run_dbt(run_id, "build", full_refresh=args.full_refresh or args.step == "replay")
 
-    if args.step in ("all", "reconcile", "replay"):
+    if args.step in ("all", "reconcile", "replay", "live-update"):
         reconcile.run_reconciliation(run_id)
 
-    if args.step in ("all", "export", "replay"):
+    if args.step in ("all", "export", "replay", "live-update"):
         from dashboard.export_snapshot import export_snapshot
         with track_step(run_id, "export_snapshot") as step:
             path = export_snapshot()

@@ -14,8 +14,9 @@ d'une chaîne de magasins simulée, pour répondre à trois questions : **où ma
 > prétend pas décrire une entreprise réelle.
 
 **Démo en ligne :** https://cheugs.github.io/Retail-Inventory-or-and-Supply-Chain-Warehouse/  
-*Copie d'une vraie exécution du pipeline, publiée sur GitHub Pages (voir [docs/DEPLOIEMENT.md](docs/DEPLOIEMENT.md)).
-La chaîne complète tourne en local avec Docker (section 13).*
+*Mise à jour chaque matin : GitHub Actions simule la journée d'hier, la charge dans l'entrepôt hébergé
+sur Neon (PostgreSQL gratuit) avec dbt et le rapprochement, puis publie les chiffres sur GitHub Pages
+(voir [docs/DEPLOIEMENT.md](docs/DEPLOIEMENT.md)). La chaîne complète, avec Airflow, tourne en local avec Docker (section 13).*
 
 **Auteure :** Chengho Fongang Marie Louise
 
@@ -60,7 +61,7 @@ des stocks.
   transformations incrémentales, données en retard et en avance, isolement des données invalides,
   dédoublonnage, rapprochement avec les totaux de la source, rejeu de l'historique
 - **Volume de la démo :** environ 161 000 lignes de vente brutes, 77 000 relevés de stock, 4 500 lignes de commande
-- **Testé :** 17 tests unitaires, 17 tests d'intégration et de bout en bout, 48 tests dbt, 14 contrôles de rapprochement, CI GitHub Actions
+- **Testé :** 19 tests unitaires, 17 tests d'intégration et de bout en bout, 48 tests dbt, 14 contrôles de rapprochement, CI GitHub Actions
 - **Checklist :** chaque critère d'acceptation est relié à sa preuve dans [docs/CHECKLIST.md](docs/CHECKLIST.md)
 
 ## 2. Contexte métier et mission
@@ -223,7 +224,7 @@ Si un contrôle échoue, l'étape lève une erreur et la tâche Airflow passe en
 | Un jour = **une transaction** | Pas de jour à moitié chargé | Un très gros jour garde la transaction ouverte plus longtemps |
 | Faits de commandes **reconstruits** à chaque run | Un snapshot accumulatif change à chaque livraison ; le reconstruire est simple et sûr | Deviendrait coûteux avec des millions de commandes |
 | PostgreSQL avec **`wal_level=minimal`** | Les tables reconstruites par dbt ne passent plus par le journal WAL : `dbt build` 6 fois plus rapide (section 9) | Pas de réplication ni de restauration à un instant précis |
-| Tableau de bord **site statique + JSON** pour la démo en ligne | Hébergement gratuit qui ne s'endort pas, aucune base à exposer sur Internet | Les chiffres en ligne sont ceux du dernier export |
+| Démo en ligne : **GitHub Actions + Neon + GitHub Pages** | Une journée simulée et chargée chaque matin avec le même code qu'en local ; page statique gratuite qui s'ouvre tout de suite | Les chiffres en ligne changent une fois par jour, pas en continu ; Airflow n'est utilisé qu'en local |
 
 **Garanties de livraison.** Le chargement est "au moins une fois" (un jour peut être relancé), mais le
 **résultat** est "exactement une fois" : suppression puis insertion par lot dans `raw`, dédoublonnage
@@ -233,7 +234,10 @@ par identifiant dans `staging`, `delete+insert` sur la clé dans les faits. C'es
 
 ## 9. Résultats et tests de performance
 
-### Résultats métier (jeu de démo, 90 jours)
+### Résultats métier (jeu de démo de référence, 90 jours)
+
+*La démo en ligne utilise une entreprise plus petite qui grandit d'un jour chaque matin : ses chiffres
+sont donc différents de ceux-ci.*
 
 | Indicateur | Valeur |
 |---|---|
@@ -301,8 +305,8 @@ latérale de navigation : **Vue d'ensemble**, **Ruptures de stock**, **Fournisse
   Les animations sont coupées si le système demande de réduire les mouvements.
 - Graphiques faits à la main en SVG (pas de bibliothèque), couleurs choisies pour rester lisibles
   par les personnes daltoniennes ; les statuts ont toujours une icône et un texte.
-- En local, la page lit l'API FastAPI (`/api/snapshot`, données en direct). En ligne, elle lit
-  `data/snapshot.json`. La barre latérale indique la source.
+- En local (ou sur Render), la page lit l'API FastAPI (`/api/snapshot`, données en direct). Sur GitHub
+  Pages, elle lit `data/snapshot.json`, rafraîchi chaque matin. La barre latérale indique la source et la date.
 
 ![Ruptures de stock](docs/assets/dashboard-stockouts.png)
 
@@ -317,7 +321,7 @@ latérale de navigation : **Vue d'ensemble**, **Ruptures de stock**, **Fournisse
 
 | Niveau | Contenu | Commande |
 |---|---|---|
-| Tests unitaires (17) | Générateur (valeurs réalistes, ids uniques, déterminisme, problèmes injectés), contrôle du schéma des fichiers, structure du DAG, absence de secrets | `pytest tests/unit` |
+| Tests unitaires (19) | Générateur (valeurs réalistes, ids uniques, déterminisme, un jour de plus ne change pas le passé, problèmes injectés), contrôle du schéma des fichiers, structure du DAG, absence de secrets | `pytest tests/unit` |
 | Tests dbt (48) | Clés uniques et non nulles, relations faits -> dimensions, valeurs acceptées, SCD2 sans chevauchement, une seule version courante, raw = faits + quarantaine, marts = faits, cohérence des montants | `dbt build` |
 | Tests d'intégration et de bout en bout (17) | Sur une vraie base : idempotence, panne au milieu d'un lot, colonne obligatoire absente, vente en retard, produit arrivé après ses ventes, doublon, changement de prix en retard, évolution de schéma, conversion de devises, rejeu complet identique, chiffres du tableau de bord = base | `pytest -m integration` |
 | Rapprochement (14 contrôles) | Source = entrepôt, à chaque exécution | `python -m retail_pipeline.run reconcile` |
@@ -373,6 +377,7 @@ python -m uvicorn dashboard.app:app --port 8000
 ```bash
 python -m retail_pipeline.run ingest --date 2026-02-10   # recharger un jour
 python -m retail_pipeline.run replay                     # reconstruire tout l'entrepôt depuis raw
+python -m retail_pipeline.run live-update                # mode démo en ligne : charger les jours jusqu'à hier
 pytest tests/unit                                        # tests unitaires
 pytest -m integration                                    # tests d'intégration (base retail_test)
 python -m benchmarks.run_benchmark                       # benchmark 10k / 100k / 1M

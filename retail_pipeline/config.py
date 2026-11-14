@@ -7,6 +7,7 @@ import os
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
+from urllib.parse import parse_qs, unquote, urlparse
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -29,6 +30,25 @@ def _load_dotenv(path: Path) -> None:
 _load_dotenv(PROJECT_ROOT / ".env")
 
 
+def _apply_database_url() -> None:
+    """A hosted database (for example Neon) gives one connection string:
+    postgresql://user:password@host/dbname?sslmode=require
+    It is split into the POSTGRES_* variables used everywhere else (dbt included)."""
+    url = os.getenv("DATABASE_URL")
+    if not url:
+        return
+    parts = urlparse(url)
+    os.environ["POSTGRES_HOST"] = parts.hostname or "localhost"
+    os.environ["POSTGRES_PORT"] = str(parts.port or 5432)
+    os.environ["POSTGRES_DB"] = parts.path.lstrip("/") or "postgres"
+    os.environ["POSTGRES_USER"] = unquote(parts.username or "")
+    os.environ["POSTGRES_PASSWORD"] = unquote(parts.password or "")
+    os.environ["POSTGRES_SSLMODE"] = parse_qs(parts.query).get("sslmode", ["require"])[0]
+
+
+_apply_database_url()
+
+
 @dataclass(frozen=True)
 class Settings:
     # PostgreSQL connection (the warehouse)
@@ -37,6 +57,7 @@ class Settings:
     pg_db: str = os.getenv("POSTGRES_DB", "retail_dw")
     pg_user: str = os.getenv("POSTGRES_USER", "retail")
     pg_password: str = os.getenv("POSTGRES_PASSWORD", "retail")
+    pg_sslmode: str = os.getenv("POSTGRES_SSLMODE", "prefer")
 
     # Where the simulated source systems drop their daily files
     landing_dir: Path = Path(os.getenv("LANDING_DIR", str(PROJECT_ROOT / "data" / "landing")))
@@ -48,6 +69,8 @@ class Settings:
     n_products: int = int(os.getenv("SIM_PRODUCTS", "150"))
     n_suppliers: int = int(os.getenv("SIM_SUPPLIERS", "12"))
     seed: int = int(os.getenv("SIM_SEED", "42"))
+    # Live mode: horizon used to plan launches and price changes (kept fixed)
+    plan_days: int = int(os.getenv("SIM_PLAN_DAYS", "365"))
 
     # dbt
     dbt_bin: str = os.getenv("DBT_BIN", "dbt")
@@ -58,7 +81,7 @@ class Settings:
     def dsn(self) -> str:
         return (
             f"host={self.pg_host} port={self.pg_port} dbname={self.pg_db} "
-            f"user={self.pg_user} password={self.pg_password}"
+            f"user={self.pg_user} password={self.pg_password} sslmode={self.pg_sslmode}"
         )
 
 

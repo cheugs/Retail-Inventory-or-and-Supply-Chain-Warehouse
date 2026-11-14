@@ -106,3 +106,17 @@ def test_deliveries_reference_known_order_lines(landing):
     po_ids = {r["po_line_id"] for r in all_rows(landing, "purchase_orders")}
     for d in all_rows(landing, "deliveries"):
         assert d["po_line_id"] in po_ids
+
+
+def test_one_more_day_does_not_change_the_past(tmp_path):
+    # live mode: with a fixed planning horizon, simulating 21 days instead of 20
+    # gives exactly the same files for the first 20 days (except deliveries, whose
+    # few corrupted quantities are drawn at the end), so only the new day is loaded
+    a, b = tmp_path / "a", tmp_path / "b"
+    generate(a, START, 20, 2, 12, 3, seed=5, plan_days=365)
+    generate(b, START, 21, 2, 12, 3, seed=5, plan_days=365)
+    for day_dir in sorted(a.iterdir()):
+        for f in day_dir.glob("*.csv"):
+            if f.name != "deliveries.csv":
+                assert f.read_text() == (b / day_dir.name / f.name).read_text(), f"{day_dir.name}/{f.name}"
+    assert (b / date(2026, 1, 21).isoformat() / "sales.csv").exists()

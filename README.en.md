@@ -13,8 +13,9 @@ to answer three questions: **where is stock missing**, **which suppliers keep th
 > shows a data engineering approach; it does not claim to describe a real company.
 
 **Online demo:** https://cheugs.github.io/Retail-Inventory-or-and-Supply-Chain-Warehouse/  
-*A copy of a real pipeline run, published on GitHub Pages (see [docs/en/DEPLOYMENT.md](docs/en/DEPLOYMENT.md)).
-The full chain runs locally with Docker (section 13).*
+*Updated every morning: GitHub Actions simulates yesterday, loads it into the warehouse hosted on Neon
+(free PostgreSQL) with dbt and the reconciliation, then publishes the figures on GitHub Pages
+(see [docs/en/DEPLOYMENT.md](docs/en/DEPLOYMENT.md)). The full chain, with Airflow, runs locally with Docker (section 13).*
 
 **Author:** Chengho Fongang Marie Louise
 
@@ -59,7 +60,7 @@ stockouts, supplier performance and inventory turnover.
   transformations, late and early-arriving records, isolation of invalid data, deduplication,
   reconciliation against source totals, replay of history
 - **Demo volume:** about 161,000 raw sales lines, 77,000 stock counts, 4,500 order lines
-- **Tested:** 17 unit tests, 17 integration and end-to-end tests, 48 dbt tests, 14 reconciliation checks, GitHub Actions CI
+- **Tested:** 19 unit tests, 17 integration and end-to-end tests, 48 dbt tests, 14 reconciliation checks, GitHub Actions CI
 - **Checklist:** every acceptance item is linked to its proof in [docs/en/CHECKLIST.md](docs/en/CHECKLIST.md)
 
 ## 2. Business context and mission
@@ -216,7 +217,7 @@ If a check fails, the step raises an error and the Airflow task turns red.
 | One day = **one transaction** | No half-loaded day | A very big day keeps the transaction open longer |
 | Order facts **rebuilt** every run | An accumulating snapshot changes with every delivery; rebuilding is simple and safe | Would become expensive with millions of orders |
 | PostgreSQL with **`wal_level=minimal`** | Tables rebuilt by dbt no longer go through the WAL: `dbt build` 6 times faster (section 9) | No replication or point-in-time restore |
-| Dashboard as **static site + JSON** for the online demo | Free hosting that never sleeps, no database exposed to the Internet | Online figures are those of the last export |
+| Online demo: **GitHub Actions + Neon + GitHub Pages** | One simulated day loaded every morning with the same code as locally; free static page that opens at once | Online figures change once a day, not continuously; Airflow is only used locally |
 
 **Delivery guarantees.** Loading is "at least once" (a day can be re-run), but the **result** is
 "exactly once": delete then insert per batch in `raw`, deduplication by id in `staging`, `delete+insert`
@@ -225,7 +226,9 @@ on the key in the facts. This is tested (`test_reloading_a_day_is_idempotent`,
 
 ## 9. Results and performance benchmarks
 
-### Business results (demo dataset, 90 days)
+### Business results (reference demo dataset, 90 days)
+
+*The online demo uses a smaller company that grows by one day every morning, so its figures differ from these.*
 
 | Indicator | Value |
 |---|---|
@@ -291,8 +294,8 @@ It is in French, with a button to switch to English.
   Animations are turned off when the system asks for reduced motion.
 - Hand-made SVG charts (no library), colours chosen to stay readable for colour-blind people;
   statuses always have an icon and a label.
-- Locally, the page reads the FastAPI endpoint (`/api/snapshot`, live data). Online, it reads
-  `data/snapshot.json`. The sidebar shows the source.
+- Locally (or on Render), the page reads the FastAPI endpoint (`/api/snapshot`, live data). On GitHub
+  Pages, it reads `data/snapshot.json`, refreshed every morning. The sidebar shows the source and date.
 
 ![Stockouts](docs/assets/dashboard-stockouts.png)
 
@@ -307,7 +310,7 @@ It is in French, with a button to switch to English.
 
 | Level | Content | Command |
 |---|---|---|
-| Unit tests (17) | Generator (realistic values, unique ids, determinism, injected problems), file schema check, DAG structure, no secrets | `pytest tests/unit` |
+| Unit tests (19) | Generator (realistic values, unique ids, determinism, one more day does not change the past, injected problems), file schema check, DAG structure, no secrets | `pytest tests/unit` |
 | dbt tests (48) | Unique and not-null keys, fact -> dimension relationships, accepted values, SCD2 without overlap, one current version, raw = facts + quarantine, marts = facts, consistent amounts | `dbt build` |
 | Integration and end-to-end tests (17) | On a real database: idempotency, crash in the middle of a batch, missing mandatory column, late sale, product arriving after its sales, duplicate, late price change, schema evolution, currency conversion, identical full replay, dashboard figures = database | `pytest -m integration` |
 | Reconciliation (14 checks) | Source = warehouse, at every run | `python -m retail_pipeline.run reconcile` |
@@ -362,6 +365,7 @@ python -m uvicorn dashboard.app:app --port 8000
 ```bash
 python -m retail_pipeline.run ingest --date 2026-02-10   # reload one day
 python -m retail_pipeline.run replay                     # rebuild the whole warehouse from raw
+python -m retail_pipeline.run live-update                # online demo mode: load the days up to yesterday
 pytest tests/unit                                        # unit tests
 pytest -m integration                                    # integration tests (retail_test database)
 python -m benchmarks.run_benchmark                       # 10k / 100k / 1M benchmark

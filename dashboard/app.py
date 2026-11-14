@@ -34,6 +34,9 @@ _cache: dict = {"at": 0.0, "data": None}
 
 
 def _dsn() -> str:
+    # hosted database (Render + Neon): one connection string
+    if os.getenv("DATABASE_URL"):
+        return os.environ["DATABASE_URL"]
     return (f"host={os.getenv('POSTGRES_HOST', 'localhost')} port={os.getenv('POSTGRES_PORT', '5433')} "
             f"dbname={os.getenv('POSTGRES_DB', 'retail_dw')} user={os.getenv('POSTGRES_USER', 'retail')} "
             f"password={os.getenv('POSTGRES_PASSWORD', 'retail')}")

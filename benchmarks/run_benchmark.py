@@ -24,6 +24,8 @@ from datetime import date, datetime
 from pathlib import Path
 
 # Must be set before retail_pipeline is imported (its settings read the environment)
+# the benchmark drops its database: never point it at a hosted DATABASE_URL
+os.environ["DATABASE_URL"] = ""
 os.environ["POSTGRES_DB"] = os.environ.get("BENCH_POSTGRES_DB", "retail_bench")
 os.environ["LANDING_DIR"] = os.path.join(tempfile.gettempdir(), "retail_bench_landing")
 

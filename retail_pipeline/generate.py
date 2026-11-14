@@ -237,8 +237,13 @@ def generate(
     n_suppliers: int,
     seed: int,
     clean: bool = True,
+    plan_days: int | None = None,
 ) -> dict:
     """Simulate `days` days of business and write one folder of files per day.
+
+    `plan_days` is the horizon used to plan product launches and price changes
+    (default: `days`). The live mode keeps it fixed, so that simulating one more
+    day adds a new day without changing the days already loaded.
 
     Returns a small summary (number of rows per file type) used by tests and benchmarks.
     """
@@ -247,7 +252,8 @@ def generate(
         shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    stores, suppliers, products = build_master_data(rng, n_stores, n_products, n_suppliers, days)
+    plan_days = plan_days or days
+    stores, suppliers, products = build_master_data(rng, n_stores, n_products, n_suppliers, plan_days)
     supplier_by_id = {s.supplier_id: s for s in suppliers}
     store_by_id = {s["store_id"]: s for s in stores}
 
@@ -255,8 +261,8 @@ def generate(
     price_changes = {}   # day -> list of products
     for p in products:
         first_possible = max(p.launch_day + 3, 10)
-        if rng.random() < 0.15 and first_possible < days:   # short simulations have no price change
-            day = int(rng.integers(first_possible, days))
+        if rng.random() < 0.15 and first_possible < plan_days:   # short simulations have no price change
+            day = int(rng.integers(first_possible, plan_days))
             price_changes.setdefault(day, []).append(p)
 
     # Files are "delivered" on a given day; late rows are pushed to a later day
@@ -301,11 +307,11 @@ def generate(
             delay = 2 if rng.random() < 0.15 else 0   # late catalog update
             outbox[d + delay]["products"].append(product_row(p, day_ts + timedelta(hours=5)))
         # Master data changes that are simply overwritten in the warehouse (SCD type 1)
-        if d == days // 2 and stores:
+        if d == plan_days // 2 and stores:
             s = stores[0]
             s["manager_name"] = "Manager 99"
             outbox[d]["stores"].append(store_row(s, day_ts + timedelta(hours=7)))
-        if d == days // 3 and suppliers:
+        if d == plan_days // 3 and suppliers:
             sup = suppliers[0]
             sup.name = sup.name.replace("SARL", "SAS")
             outbox[d]["suppliers"].append(supplier_row(sup, day_ts + timedelta(hours=7)))

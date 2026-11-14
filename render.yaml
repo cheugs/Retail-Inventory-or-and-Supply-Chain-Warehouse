@@ -1,16 +1,18 @@
-# Render "Blueprint" for the online demo (free plan, static site).
-# The dashboard is published as plain HTML/CSS/JS: it reads
-# dashboard/static/data/snapshot.json, a copy of a real pipeline run.
-# A static site on Render's free plan does not go to sleep: the page opens at once.
-# See docs/DEPLOIEMENT.md.
+# Render "Blueprint" for the LIVE dashboard (free plan).
+# Render builds the root Dockerfile: a FastAPI server that reads the warehouse
+# hosted on Neon. DATABASE_URL is asked for when the Blueprint is created
+# (sync: false = the value is typed in Render, never written in this file).
+# The free plan sleeps after 15 minutes without visits: the first load can take
+# about a minute. See docs/DEPLOIEMENT.md.
 services:
   - type: web
-    name: retail-warehouse-dashboard
-    runtime: static
-    buildCommand: echo "static site, nothing to build"
-    staticPublishPath: ./dashboard/static
-    pullRequestPreviewsEnabled: false
-    headers:
-      - path: /data/*
-        name: Cache-Control
-        value: no-cache
+    name: retail-warehouse-live
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        sync: false
